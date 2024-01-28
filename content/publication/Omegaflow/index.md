@@ -82,12 +82,14 @@ url_video: ''
 slides: ""
 ---
 
-{{% callout note %}}
-Click the *Cite* button above to demo the feature to enable visitors to import publication metadata into their reference management software.
-{{% /callout %}}
 
-{{% callout note %}}
-Create your slides in Markdown - click the *Slides* button to check out the example.
-{{% /callout %}}
-
-Supplementary notes can be added here, including [code, math, and images](https://wowchemy.com/docs/writing-markdown-latex/).
+Omegaflow是我博士期间的一个研究工作，它是一种基于前向数据流的思想的指令调度和执行架构。
+前向数据流架构与传统Tomasulo算法不同，由producer指令记录consumer的位置，并在计算完成后主动向consumer指令传递数据。
+基于此，每次指令计算完成之后，只需要传递有限次包含唤醒信息的Token就可以唤醒所有依赖于该指令的consumer指令。
+而在传统Tomasulo算法中，无论是隐式重命名需要向整个issue queue广播寄存器tag和value，
+而显示重命名则需要向整个issue queue广播寄存器tag。
+由于指令的依赖存在局部性，前向数据流架构可以将调度和执行引擎划分为多个组，组间的通信显著少于组内的通信，
+从而实现可扩展的指令窗口。
+Omegaflow为前向数据流架构提出了一种性能上限分析工具，并改进了Token的处理和传输速度。
+（虽然但是，如论文中报告的一样，前向数据流架构仍然无法outperform 传统Tomasulo算法。）
+Omegaflow的代码在：[Omegaflow project](https://github.com/shinezyy/ff-reshape)。
