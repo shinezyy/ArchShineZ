@@ -6,28 +6,28 @@ title: Zhou, Yaoyang
 superuser: true
 
 # Role/position/tagline
-role: PhD student of Computer Architecture
+role: Maintainer of the micro-architecture simulator for Xiangshan; PhD of Computer Architecture
 
 # Organizations/Affiliations to show in About widget
 organizations:
-- name: Institute of Computing Technology, CAS
-  url: http://www.ict.ac.cn/
+- name: Beijing Institute of Open Source Chip
+  url: https://www.bosc.ac.cn/
 
 # Short bio (displayed in user profile at end of posts)
-bio: My research interests include CPU micro-architecture exploration, performance modeling, and performance evaluation.
+bio: I specialize in performance bottleneck analysis and CPU micro-architecture exploration.
 
 # Interests to show in About widget
 interests:
-- Micro-architecture exploration
-- Perforamnce evaluation
-- Asset-Light chip development
+- CPU micro-architecture
+- Android open source ROMs
+- Table tennis
 
 # Education to show in About widget
 Education:
   courses:
   - course: PhD in Computer Architecture
     institution: Institute of Computing Technology, CAS
-    year: 2017 - 2023 (expected)
+    year: 2017 - 2023
   - course: BSc in Computer Science
     institution: Nanjing University
     year: 2013 - 2017
@@ -67,10 +67,17 @@ email: ""
 highlight_name: true
 ---
 
-周耀阳 (ShineZ) is a PhD student of computer architecture in ICT, CAS.
-He is interested in researches about CPU architecture: ILP enhancement, scalable cores, and performance evaluation framework.
+I am interested in techniques and researches about CPU ILP enhancement
+- Prefetchers
+- Scalable cores
+- Performance evaluation and bottleneck analysis
 
-His hobbies include playing table tennis, cycling, evaluating Android open source ROMs, and reading medical papers.
+I have collaborated with my team to develop the micro-architecture simulator for the Xiangshan processor.
+I played a significant role in the design of the 3rd generation architecture of the Xiangshan processor,
+achieving a SPECint2k6 score of 15/GHz on both C++ simulator and RTL.
 
-{{< icon name="download" pack="fas" >}} Download my {{< staticref "uploads/CV-En-latex.pdf" "newtab" >}}resumé{{< /staticref >}} or {{< staticref "uploads/CV-Chn.pdf" "newtab" >}}简历{{< /staticref >}}.
+My hobbies include playing table tennis, evaluating Android open source ROMs, and reading papers on health and biology.
+I obtained my Ph.D. degree from the Institute of Computing Technology, Chinese Academy of Sciences, and B.Sc. degree from Nanjing University.
+
+<!-- {{< icon name="download" pack="fas" >}} Download my {{< staticref "uploads/CV-En-latex.pdf" "newtab" >}}resumé{{< /staticref >}} or {{< staticref "uploads/CV-Chn.pdf" "newtab" >}}简历{{< /staticref >}}. -->
 
