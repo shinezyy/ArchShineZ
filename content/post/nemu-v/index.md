@@ -53,6 +53,8 @@ categories:
 最终，我们在 NEMU 上仿真 `h264_sss` 时 获得了 131 MIPS 的仿真速度，作为对比，而 QEMU 的速度不超过 7 MIPS。
 我们的方法不局限于 RISC-V Vector 指令集，也可以用于优化 ARM SVE 等其他向量指令集的模拟。
 
+目前，本优化已经合入 NEMU 的主分支：[rv64v: fast path for unit-stride ld/st; vectorize this fast path](https://github.com/OpenXiangShan/NEMU/pull/446)。
+
 # 背景
 
 ## 指令集模拟器
@@ -201,3 +203,6 @@ GCC 和 llvm 都不同程度地支持了自动向量化。
 
 NEMU 的主体框架由余子濠博士完成，RVV 的大量实现由张梓悦同学完成。
 笔者仅完成了针对 RVV 访存的 common case 的优化工作。
+
+
+*本文同步发表于 [ShineZ的博客](https://shinezyy.github.io/ArchShineZ/post/nemu-v/)。因为是用 Markdown 转换为 Word 之后发布到知乎，知乎文章的排版可能略有瑕疵。*

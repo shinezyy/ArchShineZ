@@ -3,7 +3,7 @@ title: 非 AI 背景的人如何入门大模型（一）
 subtitle: 坐观垂钓者，徒有羡鱼情
 
 # Summary for listings and search engines
-summary: 昨天
+summary: 一个非 AI 背景的人写的 AI 入门文献列表
 
 # Link this post with a project
 projects: []
