@@ -6,7 +6,7 @@ title: Zhou, Yaoyang
 superuser: true
 
 # Role/position/tagline
-role: Maintainer of the micro-architecture simulator for Xiangshan; PhD of Computer Architecture
+role: Architect of LLM DSA; Maintainer of u-arch simulator for Xiangshan; PhD of Computer Architecture
 
 # Organizations/Affiliations to show in About widget
 organizations:
@@ -14,13 +14,14 @@ organizations:
   url: https://www.bosc.ac.cn/
 
 # Short bio (displayed in user profile at end of posts)
-bio: I specialize in performance bottleneck analysis and CPU micro-architecture exploration.
+bio: I specialize in LLM DSA and CPU micro-architecture.
 
 # Interests to show in About widget
 interests:
+- LLM inference
 - CPU micro-architecture
-- Android open source ROMs
-- Table tennis
+- Investment
+- Badminton
 
 # Education to show in About widget
 Education:
@@ -67,16 +68,31 @@ email: ""
 highlight_name: true
 ---
 
-I am interested in techniques and researches about CPU ILP enhancement
+I am interested in LLM inference and CPU micro-architecture.
+
+For LLM inference, I am working on
+- Next generation LLM inference chip
+- Speculative decoding
+
+In Oct. 2024, we initiate a new project on LLM inference in Beijing Institute of Open Source Chip (BOSC).
+We will build RISC-V cores equipped RISC-V matrix extensions and high-bandwidth network-on-chip (NoC) to support LLM inference.
+**I'm looking to collaborate on LLM-DSA projects with guys with strong expertise in CPU/accelerator design,
+software-hardware co-design, and algorithm-hardware co-design.
+To join us, please e-mail me**: archshinez AT outlook DOT com or shinezyy AT qq DOT com.
+
+For CPU performance, I am experienced in
 - Prefetchers
-- Scalable cores
-- Performance evaluation and bottleneck analysis
+- Workload characterization
+- Performance counter architecture
+- Performance evaluation framework
 
-I have collaborated with my team to develop the micro-architecture simulator for the Xiangshan processor.
-I played a significant role in the design of the 3rd generation architecture of the Xiangshan processor,
+During 2022-2024, I led the performance analysis and modeling team of Xiangshan processor in Beijing Institute of Open Source Chip (BOSC).
+Our team played a significant role in the design of 3rd generation architecture of the Xiangshan processor,
 achieving a SPECint2k6 score of 15/GHz on both C++ simulator and RTL.
+I will continue maintaining the micro-architecture simulator for Xiangshan and contribute to the open-source community
+when leading the LLM inference project in BOSC.
 
-My hobbies include playing table tennis, evaluating Android open source ROMs, and reading papers on health and biology.
+My hobbies include playing badmiton, investment, and reading papers on health and biology.
 I obtained my Ph.D. degree from the Institute of Computing Technology, Chinese Academy of Sciences, and B.Sc. degree from Nanjing University.
 
 <!-- {{< icon name="download" pack="fas" >}} Download my {{< staticref "uploads/CV-En-latex.pdf" "newtab" >}}resumé{{< /staticref >}} or {{< staticref "uploads/CV-Chn.pdf" "newtab" >}}简历{{< /staticref >}}. -->
