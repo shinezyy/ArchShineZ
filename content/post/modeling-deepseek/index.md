@@ -64,6 +64,7 @@ TL;DR: H800、H20、A100、L20、L40S 的数据附在文末（不构成买卡建
 其他的算子简单描述矩阵形状，让后用 Roofline 进行计算。
 
 ``` Python
+
     # Compute time if memory-bound (data transfer limited)
     memory_time = total_bytes / mem_bw
 
@@ -92,6 +93,7 @@ TL;DR: H800、H20、A100、L20、L40S 的数据附在文末（不构成买卡建
 
 我在建模硬件时，增加了 2 个参数：
 ``` Python
+
         self.two_stage_fa3 = False
         self.three_stage_fa3 = False
 ```
@@ -101,6 +103,7 @@ TL;DR: H800、H20、A100、L20、L40S 的数据附在文末（不构成买卡建
 
 计算 MLA 时间的方法如下（与前面的两张图相对应）：
 ``` Python
+
         if hw.three_stage_fa3:
             compute_time = max(vector_time, all_gemms_time)
             not_overlapped_tensor_time = max(0, all_gemms_time - vector_time)
@@ -123,6 +126,7 @@ FFN 的 MFU 矫正可以参考 [DeepGEMM](https://github.com/deepseek-ai/DeepGEM
 
 具体地，在生成 MoE 的 GEMM 时，给每个 GEMM 标注 discount factor：
 ``` Python
+
     def moe_factory(self, bs, dense=False):
         up_dim = self.dense_internal_dim if dense else self.moe_internal_dim
         # There are 2 up_project matrix here, so we can concat them at the N dimension
@@ -156,6 +160,7 @@ FFN 的 MFU 矫正可以参考 [DeepGEMM](https://github.com/deepseek-ai/DeepGEM
 在计算 GEMM 延迟时，把 `precision_promo_discount_factor` 带入：
 
 ``` Python
+
     def mm_helper(hw: Hardware, op: MMOp, verbose=False):
     # Compute the latency of a matrix-matrix multiplication
     # op: MMOp
@@ -189,6 +194,7 @@ FFN 的 MFU 矫正可以参考 [DeepGEMM](https://github.com/deepseek-ai/DeepGEM
 我根据 DeepEP 中的数据手动给网卡的有效带宽进行了赋值。其中 E810 不一定指具体的型号，只是为了代表一类较为便宜的 RoCE v2 网卡。
 
 ``` Python
+
 class NIC:
     def __init__(self, name, bw):
         self.name = name
@@ -205,6 +211,7 @@ class E810(NIC):
 
 RDMA 通信时间计算：
 ``` Python
+
 def compute_combine_latency(self, nic_bw, bs):
     combine_elem_size = self.non_moe_elem_size
     experts_to_combine = bs*self.sparse_expert_per_token
@@ -226,6 +233,7 @@ def compute_rdma_latency(card_effective_bw, tx_bw):  # both in Bytes/s
 - `sram_sz` 影响了 Flash Attention 每次能切多长的 sequence，这对矩阵的形状、softmax rescale 的次数有影响，但是这部分我建模的方式还比较粗糙
 
 ``` Python
+
 class Hardware:
     def __init__(self, name):
         self.name = name
@@ -248,6 +256,7 @@ class Hardware:
 
 EP 数量用于计算每张卡的 expert 数量：
 ``` Python
+
     def sparse_expert_per_card(self):
         return np.ceil(self.expert_count / self.ep_count)
 ```
@@ -265,6 +274,7 @@ Naive 流水线计算时间是每一层的时间相加，而 dual micro batch �
 
 计算 token 时延时，用一个关键路径时间乘上 micro batch 的次数：
 ``` Python
+
     def final_report(self, overall_lat, bs, micro_batch_count=1):
         overall_lat = overall_lat * micro_batch_count
         user_token_per_sec = 1 / (overall_lat * self.n_layers)
@@ -273,6 +283,7 @@ Naive 流水线计算时间是每一层的时间相加，而 dual micro batch �
 # 可选的参数配置
 
 ``` Python
+
         hist_len = 5 * Ki 
         cards = [H800(), H20(), A100(), L20(), L40S()]
         nics = [CX7(), E810()]
@@ -318,7 +329,8 @@ eagle-like layer 是 Deepseek V3 里用到的结构，和 eagle layer 略有不�
 
 `speculative_decode_len` 也会影响最终的“用户体验到的 TPS” 和有效吞吐：
 ``` Python
-    # self.q_seq_len - 1 = speculative decode length
+
+        # self.q_seq_len - 1 = speculative decode length
         speculation_success_token_count = 0
         for i in range(1, self.q_seq_len):
             speculation_success_token_count += pow(0.85, i)
@@ -334,6 +346,7 @@ eagle-like layer 是 Deepseek V3 里用到的结构，和 eagle layer 略有不�
 第二个约束是 QoS 约束（ux_tps：user-experienced token per second），如果 `ux_tps < target_ux_tps` 就降低 batch size。
 
 ``` Python
+
     ux_tps = 0
     bs = 128 + 8
 
@@ -364,6 +377,7 @@ eagle-like layer 是 Deepseek V3 里用到的结构，和 eagle layer 略有不�
 
 去重：
 ``` Python
+
    df = df.sort_values(by=['Throughput Per card'], ascending=False).drop_duplicates(subset=['GPU', 'NIC', 'EP', 'Non-expert param elem size'], keep='first')
 ```
 
