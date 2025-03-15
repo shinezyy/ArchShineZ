@@ -57,7 +57,6 @@ TL;DR: H800、H20、A100、L20、L40S 的数据附在文末（不构成买卡建
 根据前期计算结果，下面几个算子/流水级在推理过程中时间占比最大。因此本模型对它们增加了可选的手动矫正，具体矫正方法在本小节后面介绍。
 
 - FlashMLA
-- Attention O projection
 - 稀疏层 Dispatch 和 Combine 的时间
 - FFN
 
@@ -302,10 +301,11 @@ Naive 流水线计算时间是每一层的时间相加，而 dual micro batch �
 但是我还没来得及做……
 - `kvc_sz` 是 KV cache 的元素大小，如果用 fp8 就是 1，如果用 bf16 就是 2。
 `non_moe_param_sz` 是除了 Expert 之外的参数的元素大小，如果用 fp8 就是 1，如果用 bf16 就是 2。
-    1) 当这两个参数都为 2 时，就是 Deepseek 官方的配置。
-    2) 当 `kvc_sz=1, non_moe_param_sz=2` 时，KV cache 的访存带宽需求减半，但是 flashMLA 仍然用 bf16 计算，用 bf16 flops。
-    3) 当 `kvc_sz=1, non_moe_param_sz=1` 时，flashMLA 改为用 fp8 计算。
-- `promotion` 是指使用 DeepGEMM 中提供的数据来矫正 MFU 的。如果设为 `True`，MoE 计算时会对 GPU 的 fp8 flops 进行打折，
+
+    - 当这两个参数都为 2 时，就是 Deepseek 官方的配置。
+    - 当 `kvc_sz=1, non_moe_param_sz=2` 时，KV cache 的容量需求和访存带宽需求减半，但是 flashMLA 仍然用 bf16 计算，用 GPU 的 bf16 flops 来估算时间。
+    - 当 `kvc_sz=1, non_moe_param_sz=1` 时，flashMLA 改为用 fp8 计算。
+- `promotion` 是指使用 DeepGEMM 中提供的数据来矫正 MFU 的。如果设为 `True`，MoE 计算时会对 GPU 的 fp8 flops 进行矫正，
 （理论上 MLA 也应该做类似的矫正，我还没来得及加，我暂时还不知道矫正为多少比较合适……）。
 
 ## 推测解码
