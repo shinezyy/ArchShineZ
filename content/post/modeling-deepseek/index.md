@@ -1,5 +1,5 @@
 ---
-title: 不同规格的芯片 EP 部署  Deepseek 671B 的单卡吞吐估算 – 重置版
+title: 如何估算不同规格的芯片 EP 部署 Deepseek 单卡吞吐
 subtitle: 
 
 # Summary for listings and search engines
@@ -38,20 +38,27 @@ categories:
 - 兴趣
 ---
 
+# 简介
+与上一篇文章不同，本文主要目的是介绍模型的建模方法，以及搜索吞吐最大配置的方法。
+TL;DR: H800、H20、A100、L20、L40S 的数据附在文末（不构成买卡建议）。
+
 # 吞吐计算方法
 
-首先，假设一个平均上下文长度（5K），然后用 DRAM 容量作为约束，计算出最大的 batch size per card。
+本文采用的估算方法：
+首先假设平均上下文长度为 5K （5K 上下文是参考 shen han 的文章：https://zhuanlan.zhihu.com/p/29841050824），
+然后用 DRAM 容量作为约束，计算出最大的 batch size per card。
 然后对单个 token 的延迟进行估算，得到单用户体验到 token per second。
 最后计算单卡的吞吐 = batch size per card * 单用户体验到 token per second。
 
 # 算法建模
-为了简化，我只建模 Decoding 阶段，并且只计算 sparse layer 的时间。
-因为 dense layer 占比很小，当前版本我用 sparse layer 的时间乘 61 层。
+为了简化，我只建模 Decoding 阶段，并且只计算稀疏层 （FFN 的 experts 多数为 routed expert 的层，一共 58 层） 的时间。
+因为稠密层（FFN 全部为 shared expert 的层，一共 3 层） 占比很小，当前版本的模型直接用 sparse layer 的时间乘 61 层。
 
 根据前期计算结果，下面几个算子/流水级在推理过程中时间占比最大。因此本模型对它们增加了可选的手动矫正，具体矫正方法在本小节后面介绍。
+
 - FlashMLA
 - Attention O projection
-- Combine 、 Dispatch
+- 稀疏层 Dispatch 和 Combine 的时间
 - FFN
 
 其他的算子简单描述矩阵形状，让后用 Roofline 进行计算。
@@ -70,10 +77,12 @@ categories:
 
 ## FlashMLA MFU 矫正
 
+> MFU：Model FLOPS Utilization = 模型推理过程所达到的 FLOPS / 硬件理论 FLOPS
+
 我最初的矫正方法是乘上一个系数，使得最终的 flops 匹配 FlashMLA 公开的数据，后来感觉这么搞不是很靠谱。
 
 仔细回忆了一下，在 [Flash attention V3 (FA3) 的论文](https://arxiv.org/abs/2407.08608)里，MFU 也不算很高。
-文章解释说因为编译器重排、寄存器压力等原因，Attention 的 2 个 GEMM 和 1 个 Softmax 无法完美掩盖，
+文章解释说因为编译器重排、寄存器压力等原因，Attention 的 2 个 GEMM 和 1 个 Softmax 无法完全 overlap，
 只有其中一个 GEMM 和 Softmax 能够完美掩盖：
 <!-- insert picture -->
 ![2-stage FA3, https://arxiv.org/abs/2407.08608](./2-stage-fa3.png)
@@ -90,7 +99,7 @@ categories:
 对于 H800/H20，我设置 `two_stage_fa3 = True`；
 对于 L20 等 Ada、Ampere 世代的卡，两个选项都是 `False`，因为直到 Hopper 才引入 wgmma.async，才能实现 FA3。
 
-计算 MLA 时间的方法如下：
+计算 MLA 时间的方法如下（与前面的两张图相对应）：
 ``` Python
         if hw.three_stage_fa3:
             compute_time = max(vector_time, all_gemms_time)
@@ -169,10 +178,10 @@ FFN 的 MFU 矫正可以参考 [DeepGEMM](https://github.com/deepseek-ai/DeepGEM
 为什么是 `op.precision_promo_discount_factor != 1 and op.elem_size == 1 and hw.fp8_low_acc_precision` 这个条件？
 因为我在思考一个问题：像 `M=4096	N=24576	K=1536` 这样形状的矩阵都跑不满 MFU，仅仅是因为形状差吗？
 个人倾向于认为精度提升带来的损失也不少，因此
-- 在 “放下节操” 的配置中，我假设可以关闭 DeepGEMM 的精度提升达到更高的 MFU
+- 在追求吞吐、放弃精度的配置中，我假设可以关闭 DeepGEMM 的精度提升达到更高的 MFU，此时忽略 `precision_promo_discount_factor`
 - 在未来的理想的硬件中，我假设 fp8 的累加精度足够，不需要做精度提升
 
-`other_discount_factor` 是干嘛的？满足手动调整 MFU 的需求，例如 Zartbot 就手动赋值 MFU=0.7
+`other_discount_factor` 则是为了满足手动调整 MFU 的需求，例如 Zartbot 就手动赋值 MFU=0.7。
 
 
 # 网络建模
@@ -245,6 +254,7 @@ EP 数量用于计算每张卡的 expert 数量：
 `sparse expert` 就是大家常说的 `routed expert`
 
 目前我建模了两种流水线：
+
 - naive 流水线，不做任何 overlapping
 - dual micro batch，就是官方公布的 EP144 所使用的 overlapping 方案
 
@@ -260,7 +270,7 @@ Naive 流水线计算时间是每一层的时间相加，而 dual micro batch �
         user_token_per_sec = 1 / (overall_lat * self.n_layers)
 ```
 
-# 可选配置
+# 可选的参数配置
 
 ``` Python
         hist_len = 5 * Ki 
@@ -274,19 +284,18 @@ Naive 流水线计算时间是每一层的时间相加，而 dual micro batch �
                             for policy in ['dual-mbatch', 'naive']:
                                 for ep in [144, 320]:
 ```
-`cards` 和 `nic` 就是 GPU 和网卡，不展开介绍了。
+参数解释：
 
-`fa_chunk` 最开始是想建模 Flash attention 一次在片上能算多长的 sequence，它会影响矩阵的形状从而影响 MFU。
+- `cards` 和 `nic` 就是 GPU 和网卡，不展开介绍。
+- `fa_chunk` 最开始是想建模 Flash attention 一次在片上能算多长的 sequence，它会影响矩阵的形状从而影响 MFU。
 但是我还没来得及做……
-
-`kvc_sz` 是 KV cache 的元素大小，如果用 fp8 就是 1，如果用 bf16 就是 2。
+- `kvc_sz` 是 KV cache 的元素大小，如果用 fp8 就是 1，如果用 bf16 就是 2。
 `non_moe_param_sz` 是除了 Expert 之外的参数的元素大小，如果用 fp8 就是 1，如果用 bf16 就是 2。
-当这两个参数都为 2 时，就是 Deepseek 官方的配置。
-当 `kvc_sz=1, non_moe_param_sz=2` 时，KV cache 的访存带宽需求减半，但是 flashMLA 仍然用 bf16 计算，用 bf16 flops。
-当 `kvc_sz=1, non_moe_param_sz=1` 时，flashMLA 改为用 fp8 计算。
-
-`promotion` 是指使用 DeepGEMM 中提供的数据来矫正 MFU 的。如果设为 `True`，MoE 计算时会对 GPU 的 fp8 flops 进行打折，
-（理论上 MLA 也应该做类似的打折，我还没来得及加，主要是不知道设置为多少比较合适……）。
+    1) 当这两个参数都为 2 时，就是 Deepseek 官方的配置。
+    2) 当 `kvc_sz=1, non_moe_param_sz=2` 时，KV cache 的访存带宽需求减半，但是 flashMLA 仍然用 bf16 计算，用 bf16 flops。
+    3) 当 `kvc_sz=1, non_moe_param_sz=1` 时，flashMLA 改为用 fp8 计算。
+- `promotion` 是指使用 DeepGEMM 中提供的数据来矫正 MFU 的。如果设为 `True`，MoE 计算时会对 GPU 的 fp8 flops 进行打折，
+（理论上 MLA 也应该做类似的矫正，我还没来得及加，我暂时还不知道矫正为多少比较合适……）。
 
 ## 推测解码
 `speculative_decode_len` 是指利用 Deepseek 自带 eagle-like layer 进行推测解码的长度。
