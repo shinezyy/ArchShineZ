@@ -45,16 +45,16 @@ categories:
 最后计算单卡的吞吐 = batch size per card * 单用户体验到 token per second。
 
 # 算法建模
-为了简化，我只建模了 Decoding 阶段，并且只计算 sparse layer 的时间。
-因为 dense layer 占比很小，当前版本我直接用 sparse layer 的时间乘 61 层。
+为了简化，我只建模 Decoding 阶段，并且只计算 sparse layer 的时间。
+因为 dense layer 占比很小，当前版本我用 sparse layer 的时间乘 61 层。
 
-根据前期计算结果，下面几个算子/流水级在推理过程中时间占比最大。因此本模型对它们增加了可选的手动矫正，具体矫正方法在本小节介绍。
+根据前期计算结果，下面几个算子/流水级在推理过程中时间占比最大。因此本模型对它们增加了可选的手动矫正，具体矫正方法在本小节后面介绍。
 - FlashMLA
 - Attention O projection
 - Combine 、 Dispatch
 - FFN
 
-其他的算子我就简单描述了一下形状，用 Roofline 进行计算。
+其他的算子简单描述矩阵形状，让后用 Roofline 进行计算。
 
 ``` Python
     # Compute time if memory-bound (data transfer limited)
@@ -70,7 +70,7 @@ categories:
 
 ## FlashMLA MFU 矫正
 
-我最开始的做法是根据 FlashMLA 公开的数据乘上一个系数进行矫正，后来我感觉这么搞不是那么靠谱。
+我最初的矫正方法是乘上一个系数，使得最终的 flops 匹配 FlashMLA 公开的数据，后来感觉这么搞不是很靠谱。
 
 仔细回忆了一下，在 [Flash attention V3 (FA3) 的论文](https://arxiv.org/abs/2407.08608)里，MFU 也不算很高。
 文章解释说因为编译器重排、寄存器压力等原因，Attention 的 2 个 GEMM 和 1 个 Softmax 无法完美掩盖，
@@ -90,7 +90,7 @@ categories:
 对于 H800/H20，我设置 `two_stage_fa3 = True`；
 对于 L20 等 Ada、Ampere 世代的卡，两个选项都是 `False`，因为直到 Hopper 才引入 wgmma.async，才能实现 FA3。
 
-用的时候是这么用的：
+计算 MLA 时间的方法如下：
 ``` Python
         if hw.three_stage_fa3:
             compute_time = max(vector_time, all_gemms_time)
@@ -103,16 +103,16 @@ categories:
             not_overlapped_tensor_time = all_gemms_time
 ```
 
-当然，为了得到一个更准确的 MFU，还可以在此基础上增加额外的矫正。
+当然，为了得到一个更准确的 MFU，我们还可以考虑在此基础上增加额外的矫正。
 
-另外，我不知道现在 CUDA 编译器有没有改进？H卡/B卡能不能实现 3-stage 的完美覆盖？
+此外，我不知道现在 CUDA 编译器有没有改进？H卡/B卡能不能实现 3-stage 的完美覆盖？
 希望有相关信息的朋友在评论区或者 PM 戳我一下，我来观摩学习。
 
 ## FFN 矫正 
 
 FFN 的 MFU 矫正可以参考 [DeepGEMM](https://github.com/deepseek-ai/DeepGEMM) 给出的数据。
 
-我在生成 MoE 的 GEMM 时，给每个 GEMM 标注了 discount factor：
+具体地，在生成 MoE 的 GEMM 时，给每个 GEMM 标注 discount factor：
 ``` Python
     def moe_factory(self, bs, dense=False):
         up_dim = self.dense_internal_dim if dense else self.moe_internal_dim
@@ -144,7 +144,7 @@ FFN 的 MFU 矫正可以参考 [DeepGEMM](https://github.com/deepseek-ai/DeepGEM
         return moe_up_x2, moe_down
 ```
 
-在计算的 GEMM 延迟时候，会把 `precision_promo_discount_factor` 带入：
+在计算 GEMM 延迟时，把 `precision_promo_discount_factor` 带入：
 
 ``` Python
     def mm_helper(hw: Hardware, op: MMOp, verbose=False):
@@ -167,9 +167,9 @@ FFN 的 MFU 矫正可以参考 [DeepGEMM](https://github.com/deepseek-ai/DeepGEM
 上述代码有 2 点需要说明：
 
 为什么是 `op.precision_promo_discount_factor != 1 and op.elem_size == 1 and hw.fp8_low_acc_precision` 这个条件？
-因为进行矫正时，我也在思考：像 `M=4096	N=24576	K=1536` 这样形状的矩阵都跑不满 MFU，仅仅是因为形状差吗？
+因为我在思考一个问题：像 `M=4096	N=24576	K=1536` 这样形状的矩阵都跑不满 MFU，仅仅是因为形状差吗？
 个人倾向于认为精度提升带来的损失也不少，因此
-- 在 “放下节操” 的配置中，我假设可以关闭 DeepGEMM 的精度提升达到更高的 MFU。
+- 在 “放下节操” 的配置中，我假设可以关闭 DeepGEMM 的精度提升达到更高的 MFU
 - 在未来的理想的硬件中，我假设 fp8 的累加精度足够，不需要做精度提升
 
 `other_discount_factor` 是干嘛的？满足手动调整 MFU 的需求，例如 Zartbot 就手动赋值 MFU=0.7
@@ -194,7 +194,7 @@ class E810(NIC):
         super().__init__("E810 100Gbps", 10 * 1024**3)
 ```
 
-延迟计算：
+RDMA 通信时间计算：
 ``` Python
 def compute_combine_latency(self, nic_bw, bs):
     combine_elem_size = self.non_moe_elem_size
@@ -209,12 +209,12 @@ def compute_rdma_latency(card_effective_bw, tx_bw):  # both in Bytes/s
 
 # GPU 建模
 
-建模 GPU 的大部分参数应该不用解释，只解释其中一部分
+对建模 GPU 时用到的部分参数的解释：
 - `fp8_FLOPS` 在 A100 这样的设备上用 int8 算力替代
 - `exp2_FLOPS` 和 `reduce_FLOPS` 由 SM 里的功能单元数量决定，在 [CUDA 编程手册](https://docs.nvidia.com/cuda/cuda-c-programming-guide/) 里有具体的数值。这两个单元影响了 Softmax 的吞吐
-- `thread_all_reduce_latency` 用于模拟不用的 AI core/SM 在 SoC 级别做 reduce 的时间，我不确定用来建模 GPGPU 是否合适，主要是用于指导我自己的芯片规格制定。但是这部分的建模还略微粗糙，我还需要再多审视一下。
-- `isolated_fp8_bf16` 理论上可以做一个芯片，fp8 和 bf16 是拆分开的。当然，这个参数现在没用
-- `sram_sz` 影响了 Flash Attention 每次能切多长的 sequence，这对矩阵的形状、Softmax rescale 的次数有影响，但是这部分我还没有仔细建模
+- `thread_all_reduce_latency` 用于模拟不用的 AI core/SM 在 SoC 级别做 reduce 的时间，我不确定用来建模 GPGPU 是否合适，主要是用于指导我自己的芯片规格制定。但是这部分的建模还略微粗糙，我还需要再多审视一下
+- `isolated_fp8_bf16` 理论上可以做一个芯片，fp8 和 bf16 是拆分开的。不过，这个参数现在没用上，忽略就好
+- `sram_sz` 影响了 Flash Attention 每次能切多长的 sequence，这对矩阵的形状、softmax rescale 的次数有影响，但是这部分我建模的方式还比较粗糙
 
 ``` Python
 class Hardware:
@@ -235,9 +235,9 @@ class Hardware:
 ```
 #	并行方式建模
 
-我的模型不建模 TP 只建模简单的 DP 和 EP，因为我未来设计的芯片没有 NVLink。
+我的模型不建模 TP，只建模简单的 DP 和 EP，因为我未来设计的芯片没有 NVLink。
 
-EP 数量是这么用的：
+EP 数量用于计算每张卡的 expert 数量：
 ``` Python
     def sparse_expert_per_card(self):
         return np.ceil(self.expert_count / self.ep_count)
@@ -248,7 +248,8 @@ EP 数量是这么用的：
 - naive 流水线，不做任何 overlapping
 - dual micro batch，就是官方公布的 EP144 所使用的 overlapping 方案
 
-Naive 流水线就是把每一层的时间相加，而 dual micro batch 就是机械地按照官方的方法来流水的，没有做更多的设计空间探索:
+Naive 流水线计算时间是每一层的时间相加，而 dual micro batch 则是按照官方的方法来划分流水级。
+目前 dual micro batch 的流水级划分在任何配置下都和官方公布的 EP144 的方式一致，没有做更多的设计空间探索。
 
 ![dual micro batch](./model-mbatch.png)
 
