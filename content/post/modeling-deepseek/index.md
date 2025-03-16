@@ -12,7 +12,7 @@ projects: []
 date: "2025-03-15T00:00:00Z"
 
 # Date updated
-lastmod: "2025-03-15T00:00:00Z"
+lastmod: "2025-03-16T00:00:00Z"
 
 # Is this an unpublished draft?
 draft: false
@@ -23,7 +23,7 @@ featured: true
 # Featured image
 # Place an image named `featured.jpg/png` in this page's folder and customize its options here.
 image:
-  caption: 'Image credit: [**Attention is All You Need**](https://arxiv.org/html/1706.03762v7)'
+  caption: 'Image credit: Flash Attention 3'
   focal_point: ""
   placement: 2
   preview_only: false
@@ -40,15 +40,15 @@ categories:
 
 # 简介
 与上一篇文章不同，本文主要目的是介绍模型的建模方法，以及搜索吞吐最大配置的方法。
-TL;DR: H800、H20、A100、L20、L40S 的数据附在文末（不构成买卡建议）。
+TL;DR: H800、H20、A100、L20 的数据附在文末（不构成买卡建议）。
 
 # 吞吐计算方法
 
 本文采用的估算方法：
 首先假设平均上下文长度为 5K （5K 上下文是参考 shen han 的文章：https://zhuanlan.zhihu.com/p/29841050824），
 然后用 DRAM 容量作为约束，计算出最大的 batch size per card。
-然后对单个 token 的延迟进行估算，得到单用户 token per second。
-最后计算单卡的吞吐 = batch size per card * 单用户 token per second。
+然后对单个 token 的延迟进行估算，得到 token per second。
+最后计算单卡的吞吐 = batch size per card * token per second。
 
 # 算法建模
 为了简化，我只建模 Decoding 阶段，并且只计算稀疏层 （FFN 的 experts 多数为 routed expert 的层，一共 58 层） 的时间。
@@ -386,7 +386,7 @@ eagle-like layer 是 Deepseek V3 里用到的结构，和 eagle layer 略有不�
 在网络通信方面则无法白嫖，因为无论你的推测解码的预测是否正确，都会增加网络通信的负担，向 Routed Expert 发送的报文数量也会随之增加。
 
 
-`speculative_decode_len` 也会影响最终的“用户体验到的 TPS” 和有效吞吐：
+`speculative_decode_len` 也会影响最终的 ux_tps（user-experienced token per second）和有效吞吐：
 ``` Python
 overall_lat = overall_lat * micro_batch_count
 raw_token_per_sec = 1 / (overall_lat * self.n_layers)
