@@ -8,6 +8,7 @@ from selenium.webdriver.common.by import By
 import time
 import argparse
 import os.path as osp
+import numpy as np
 
 def html_to_png(html_path, out_path, mobile_friendly=False): 
     if out_path is None:
@@ -100,24 +101,52 @@ def html_to_png(html_path, out_path, mobile_friendly=False):
         size = []
         
         if mobile_friendly:
-            # Use mobile dimensions
-            scroll_width = mobile_width
-            scroll_height = driver.execute_script('return document.body.parentNode.scrollHeight')
-            driver.set_window_size(mobile_width, scroll_height)
+            # Mobile approach: scroll and capture separate images
+            total_height = driver.execute_script('return document.body.parentNode.scrollHeight')
+            window_height = mobile_height
+            driver.set_window_size(mobile_width, window_height)
+            
+            # Take screenshots by scrolling
+            offset = 0
+            blog_index = 0
+            
+            while offset < total_height:
+                # Scroll to position
+                driver.execute_script(f"window.scrollTo(0, {offset});")
+                time.sleep(0.2)  # Allow time for rendering
+                
+                # Take screenshot of current viewport
+                screenshot_filename = f"blog{blog_index:02d}.png"
+                driver.get_screenshot_as_file(osp.join(out_path, screenshot_filename))
+                print(f"Saved {screenshot_filename}")
+                
+                # Prepare for next screenshot
+                blog_index += 1
+                offset += window_height
+                
+            # Also save full screenshot for section processing if needed
+            driver.set_window_size(mobile_width, total_height)
+            driver.execute_script(f"window.scrollTo(0, 0);")
+            time.sleep(0.2)
+            driver.get_screenshot_as_file(osp.join(out_path, "screenshot_mobile.png"))
+            
         else:
-            # Use original full-width approach
+            # Use original full-width approach for desktop
             scroll_width = driver.execute_script('return document.body.parentNode.scrollWidth')
             scroll_height = driver.execute_script('return document.body.parentNode.scrollHeight')
             driver.set_window_size(scroll_width, scroll_height)
-            
+            driver.get_screenshot_as_file(osp.join(out_path, "screenshot.png"))
+        
+        # Process section screenshots
         screenshot_filename = "screenshot_mobile.png" if mobile_friendly else "screenshot.png"
-        driver.get_screenshot_as_file(osp.join(out_path, screenshot_filename))
         
         for item in h3_height_list:
             if index > 0:
                 screenshot = Image.open(osp.join(out_path, screenshot_filename))
                 # 裁剪出感兴趣的位置
-                cropped_image = screenshot.crop((0, int(size[1]), scroll_width, int(item[1])))
+                cropped_image = screenshot.crop((0, int(size[1]), 
+                                                scroll_width if not mobile_friendly else mobile_width, 
+                                                int(item[1])))
                 # 保存裁剪后的图片
                 suffix = "_mobile" if mobile_friendly else ""
                 cropped_image.save(osp.join(out_path, f"{index}{suffix}.png"))
