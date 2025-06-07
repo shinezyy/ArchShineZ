@@ -9,7 +9,7 @@ import time
 import argparse
 import os.path as osp
 
-def html_to_png(html_path, out_path): 
+def html_to_png(html_path, out_path, mobile_friendly=False): 
     if out_path is None:
         out_path = os.path.dirname(html_path)
     
@@ -17,6 +17,12 @@ def html_to_png(html_path, out_path):
     html_path = os.path.abspath(html_path)
     if not html_path.startswith('file://'):
         html_path = 'file://' + html_path
+    
+    # Mobile viewport settings
+    if mobile_friendly:
+        mobile_width = 375  # iPhone width
+        mobile_height = 812  # iPhone height
+        mobile_user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1"
     
     # Try Chrome first (more commonly available on macOS)
     try:
@@ -26,8 +32,19 @@ def html_to_png(html_path, out_path):
         options.add_argument('--no-sandbox')  # Add for better compatibility
         options.add_argument('--disable-dev-shm-usage')  # Add for better compatibility
         
+        # Add mobile-specific options
+        if mobile_friendly:
+            options.add_argument(f'--user-agent={mobile_user_agent}')
+            options.add_argument(f'--window-size={mobile_width},{mobile_height}')
+            # Enable mobile emulation
+            mobile_emulation = {
+                "deviceMetrics": {"width": mobile_width, "height": mobile_height, "pixelRatio": 3.0},
+                "userAgent": mobile_user_agent
+            }
+            options.add_experimental_option("mobileEmulation", mobile_emulation)
+        
         driver = webdriver.Chrome(options=options)
-        print("Using Chrome browser")
+        print("Using Chrome browser" + (" (Mobile mode)" if mobile_friendly else ""))
         
     except Exception as chrome_error:
         print(f"Chrome failed: {chrome_error}")
@@ -39,12 +56,17 @@ def html_to_png(html_path, out_path):
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             
+            # Add mobile-specific options for Edge
+            if mobile_friendly:
+                options.add_argument(f'--user-agent={mobile_user_agent}')
+                options.add_argument(f'--window-size={mobile_width},{mobile_height}')
+            
             # Specify Edge binary location if needed
             options.binary_location = '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
             
             edge_service = EdgeService(executable_path='/Users/zyy/Applications/edgedriver_mac64_m1/msedgedriver')
             driver = webdriver.Edge(service=edge_service, options=options)
-            print("Using Edge browser")
+            print("Using Edge browser" + (" (Mobile mode)" if mobile_friendly else ""))
             
         except Exception as edge_error:
             print(f"Edge also failed: {edge_error}")
@@ -53,6 +75,20 @@ def html_to_png(html_path, out_path):
 
     try:
         driver.get(html_path)
+        
+        # Set mobile viewport if mobile_friendly is enabled
+        if mobile_friendly:
+            driver.set_window_size(mobile_width, mobile_height)
+            # Add viewport meta tag if it doesn't exist
+            driver.execute_script("""
+                if (!document.querySelector('meta[name="viewport"]')) {
+                    var meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    meta.content = 'width=device-width, initial-scale=1.0';
+                    document.getElementsByTagName('head')[0].appendChild(meta);
+                }
+            """)
+        
         sections = driver.find_elements(By.XPATH, "//h3 | //h4")
         h3_height_list = []
         for section in sections:    
@@ -62,17 +98,29 @@ def html_to_png(html_path, out_path):
 
         index = 0
         size = []
-        scroll_width = driver.execute_script('return document.body.parentNode.scrollWidth')
-        scroll_height = driver.execute_script('return document.body.parentNode.scrollHeight')
-        driver.set_window_size(scroll_width, scroll_height)
-        driver.get_screenshot_as_file(osp.join(out_path, "screenshot.png"))
+        
+        if mobile_friendly:
+            # Use mobile dimensions
+            scroll_width = mobile_width
+            scroll_height = driver.execute_script('return document.body.parentNode.scrollHeight')
+            driver.set_window_size(mobile_width, scroll_height)
+        else:
+            # Use original full-width approach
+            scroll_width = driver.execute_script('return document.body.parentNode.scrollWidth')
+            scroll_height = driver.execute_script('return document.body.parentNode.scrollHeight')
+            driver.set_window_size(scroll_width, scroll_height)
+            
+        screenshot_filename = "screenshot_mobile.png" if mobile_friendly else "screenshot.png"
+        driver.get_screenshot_as_file(osp.join(out_path, screenshot_filename))
+        
         for item in h3_height_list:
             if index > 0:
-                screenshot = Image.open(osp.join(out_path, "screenshot.png"))
+                screenshot = Image.open(osp.join(out_path, screenshot_filename))
                 # 裁剪出感兴趣的位置
                 cropped_image = screenshot.crop((0, int(size[1]), scroll_width, int(item[1])))
                 # 保存裁剪后的图片
-                cropped_image.save(osp.join(out_path, "%d.png" % index))
+                suffix = "_mobile" if mobile_friendly else ""
+                cropped_image.save(osp.join(out_path, f"{index}{suffix}.png"))
             size = item
             index += 1
         driver.quit()
@@ -83,8 +131,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i','--html_path', type=str, required=True)
     parser.add_argument('-o','--out_path', type=str, required=False)
+    parser.add_argument('-m','--mobile_friendly', action='store_true', help='Take mobile-friendly screenshots')
     args = parser.parse_args()
-    html_to_png(args.html_path, args.out_path)
+    html_to_png(args.html_path, args.out_path, args.mobile_friendly)
 
 if __name__ == '__main__':
     main()
