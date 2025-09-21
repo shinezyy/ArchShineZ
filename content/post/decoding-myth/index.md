@@ -136,6 +136,22 @@ H100, compute density: 295.224
 
 ## 解码 MLA：当 `qlen=2` 时已达平衡
 
+计算 MLA 的计算密度时，需要注意，MLA 的 K cache 和 V cache 是 “融为一体” 的 compresed KV cache，所以他们只计算一次访存。
+MLA 的计算访存比计算方法如下：
+
+``` Python
+def mla(name, seq_len, head_num, head_dim, nope_dim, chunk_size, elem_size, o_size):
+    qk_ops = seq_len * head_num * head_dim * chunk_size * 2
+    pv_ops = seq_len * head_num * chunk_size * nope_dim * 2
+    memory_bytes = seq_len * head_num * head_dim * elem_size + \
+        head_dim * chunk_size * elem_size + \
+        head_num * chunk_size * o_size
+
+    compute_density = (qk_ops + pv_ops) / memory_bytes
+    print(f"{name} compute_density: {compute_density:.3f}")
+    return compute_density
+```
+
 我们首先考察 MLA 架构在解码阶段的计算密度。以下是基于 Deepseek V3 模型相关参数的模拟计算结果：
 
 ```
@@ -164,6 +180,23 @@ H100, compute density: 295.22
 这意味着，对于 Deepseek V3 这类模型，如果采用能够一次性处理两个 Query token 的解码策略（例如并行解码或小规模的推测解码），其 Attention 操作在 H100 上就已经达到了 **计算与访存的平衡点 (Roofline Balance Point)**。如果 `qlen` 更大，它将彻底转变为一个计算密集型任务。
 
 ## 解码 GQA：解码策略与硬件共同决定瓶颈
+
+GQA 的计算访存比计算方法如下：
+
+``` Python
+def gqa(name, seq_len, q_head_num, kv_head_num, head_dim, chunk_size, elem_size, o_size):
+    group_size = q_head_num // kv_head_num
+    group_num = kv_head_num
+    qk_ops = (seq_len * group_size * head_dim * chunk_size * 2) * group_num
+    pv_ops = (seq_len * group_size * chunk_size * head_dim * 2) * group_num
+    memory_bytes = seq_len * q_head_num * head_dim * elem_size + \
+        2 * kv_head_num * head_dim * chunk_size * elem_size + \
+        q_head_num * chunk_size * o_size
+
+    compute_density = (qk_ops + pv_ops) / memory_bytes
+    print(f"{name} compute_density: {compute_density:.3f}, group size * q_seq_len: {group_size * seq_len}")
+    return compute_density
+```
 
 接下来，我们分析应用更广泛的 GQA 架构。以 Qwen3-32B（其 Group Size = 8）的相关配置为例，我们观察不同 `qlen` 下的计算密度变化：
 
@@ -204,7 +237,7 @@ H100, compute density: 295.22
 `qlen=4` 时勉强接近 H20 的计算访存比（37.00），难以企及 H100 的计算访存比（295.22）。
 不过，考虑到高昂的部署成本和较低的 token 价格，像 Qwen3-32B 这类模型通常不会在高端数据中心卡上部署。
 
-1.  **个人部署 (AI MAX 395)**: 在个人部署（如 PC、工作站）部署大模型时，为了获得可接受的交互速度，采用先进的解码策略至关重要。例如，SOTA 的 [EAGLE](https://github.com/SafeAILab/EAGLE) 等推测解码框架，其典型的 `qlen`（即一次猜测的 token 数量）可以达到 32-64。在这种场景下，GQA 的计算密度（199.81 - 334.37）与 AI MAX 395 的硬件计算密度（200.00）非常匹配，使得 Attention 操作处于 **计算访存平衡或计算密集状态**。
+1.  **个人部署 (AI MAX 395)**: 在个人部署（如 PC、工作站）部署大模型时，为了获得可接受的交互速度，采用先进的解码策略至关重要。例如，SOTA 的 [EAGLE-3](https://arxiv.org/pdf/2503.01840v1) 推测解码算法，其典型的 `qlen`（即一次猜测的 token 数量）可以达到 32-64。在这种场景下，GQA 的计算密度（199.81 - 334.37）与 AI MAX 395 的硬件计算密度（200.00）非常匹配，使得 Attention 操作处于 **计算访存平衡或计算密集状态**。
 
 2.  **云端 (RTX 5090)**: 服务提供商一般会采用传统解码（`qlen=1`），或者小规模的推测解码（`qlen=2-4`），那么 GQA 操作的计算密度极低（7.70 - 30.12），远低于 RTX 5090 的理论计算密度（116.76）。此时，Attention 操作是典型的 **访存密集型**，符合传统认知。
 
