@@ -23,7 +23,7 @@ featured: true
 # Featured image
 # Place an image named `featured.jpg/png` in this page's folder and customize its options here.
 image:
-  caption: 'Image credit: [**Attention is All You Need**](https://arxiv.org/html/1706.03762v7)'
+  caption: 'Image credit: [**Attention Variations — MQA vs GQA vs MHA vs MLA**](https://verticalserve.medium.com/group-query-attention-58283b337c65)'
   focal_point: ""
   placement: 2
   preview_only: false
@@ -128,9 +128,9 @@ H100, compute density: 295.224
 对于 Attention 操作而言，其计算密度主要取决于两个核心参数：
 
 1.  **`q_seq_len`**: Query 序列的长度。在自回归解码中，这通常代表一次前向传播中模型需要处理的 Query token 数量。传统的逐 token 解码 `q_seq_len=1`，而推测解码（Speculative Decoding）等技术会使其大于 1。
-2.  **`group_size`**: 在 Grouped-Query Attention (GQA) 中，这代表共享同一份 Key 和 Value 的 Query Head 的数量。
+2.  **`group_size`**: 在 [Grouped-Query Attention (GQA)](https://arxiv.org/pdf/2305.13245) 中，这代表共享同一份 Key 和 Value 的 Query Head 的数量。
 
-一个重要的特例是 **MLA (Mixture-of-LoRA-Experts)** 架构，例如 Deepseek V3 所采用的技术。在解码阶段，如果采用[矩阵吸收](https://zhuanlan.zhihu.com/p/700214123)等先进技术，MLA 的核心计算在形式上非常接近于 [Multi-Query Attention (MQA)](https://arxiv.org/abs/1911.02150)。在这种模式下，所有 Query Head 共享同一份压缩后的 KV Cache，其 `group_size` 实际上就等于总的 `head_num`。
+一个例子是 Deepseek V2/V3 中使用的 [**Multi-Head Latent Attention(MLA)**](https://arxiv.org/abs/2405.04434)。在解码阶段，如果采用[矩阵吸收](https://zhuanlan.zhihu.com/p/700214123)等先进技术，MLA 的核心计算在形式上等于只有个一个组的 GQA，即[Multi-Query Attention (MQA)](https://arxiv.org/abs/1911.02150)。在这种模式下，所有 Query Head 共享同一份压缩后的 KV Cache，其 `group_size` 实际上就等于总的 `head_num`。
 
 下面，我们将通过具体的数据来分析 MLA 和 GQA 在不同场景下的计算密度表现。
 
