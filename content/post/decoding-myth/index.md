@@ -3,7 +3,7 @@ title: The myth of decoding large models
 subtitle: 
 
 # Summary for listings and search engines
-summary: 
+summary: 在探讨大语言模型（LLM）的性能时，一个流传已久的说法是：“解码过程中的 Attention 操作是访存密集型（Memory Bound）的。” 这个观点深入人心，以至于许多优化讨论都以此为前提。然而，随着模型架构的演进和解码策略的创新，这一迷思正在被打破。
 
 # Link this post with a project
 projects: []
@@ -115,11 +115,11 @@ H100, compute density: 295.224
 
 # 破除解码大模型的迷思：Attention 操作并非总是访存密集型
 
-在探讨大语言模型（LLM）的性能时，一个流传已久的说法是：“解码（Decoding）过程中的 Attention 操作是访存密集型（Memory Bound）的。” 这个观点深入人心，以至于许多优化讨论都以此为前提。然而，随着模型架构的演进和解码策略的创新，这一“旧神话”正在被打破。
+在探讨大语言模型（LLM）的性能时，一个流传已久的说法是：“解码（Decoding）过程中的 Attention 操作是访存密集型（Memory Bound）的。” 这个观点深入人心，以至于许多优化讨论都以此为前提。然而，随着模型架构的演进和解码策略的创新，这一迷思正在被打破。
 
-**旧有迷思 (Old Myth):** 解码大模型是一个访存密集型任务，其瓶颈在于内存带宽。
+**迷思:** 解码大模型是一个访存密集型任务，其瓶颈在于内存带宽。
 
-**当前现实 (Current Reality):** 在许多先进的模型和解码策略下，Attention 操作的瓶颈正在从访存转向计算，或者达到计算与访存的平衡。
+**现实:** 在许多先进的模型和解码策略下，Attention 操作的瓶颈正在从访存转向计算，或者达到计算与访存的平衡。
 
 ## Attention 的计算密度取决于什么？
 
