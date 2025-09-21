@@ -70,15 +70,17 @@ highlight_name: true
 
 I am interested in LLM inference and CPU micro-architecture.
 
-For LLM inference, I am working on
-- Next generation LLM inference chip
+For LLM inference, I am interested in
+- CPU-style LLM inference architecture, such as [XSAI (Xianshan + AI)](https://github.com/OpenXiangShan/XSAI)
+- Modeling LLM kernels, chips, and clusters, such as [Softmax first-order model](https://github.com/shinezyy/softmax_sim) and [Deepseek V3 model](https://shinezyy.github.io/ArchShineZ/post/modeling-deepseek/)
 - Speculative decoding
 
-In Oct. 2024, we initiate a new project on LLM inference in Beijing Institute of Open Source Chip (BOSC).
-We will build RISC-V cores equipped RISC-V matrix extensions and high-bandwidth network-on-chip (NoC) to support LLM inference.
-**I'm looking to collaborate on LLM-DSA projects with guys with strong expertise in CPU/accelerator design,
-software-hardware co-design, and algorithm-hardware co-design.
-To join us, please e-mail me**: archshinez AT outlook DOT com or shinezyy AT qq DOT com.
+During Oct. 2024 - Oct. 2025,
+I worked on XSAI ([XSAI slides here](https://raw.githubusercontent.com/OpenXiangShan/XiangShan-doc/main/slides/20250716&0718-RVSC-XSAI%EF%BC%9A%E4%BB%A5CPU%E7%9A%84%E7%BC%96%E7%A8%8B%E8%8C%83%E5%BC%8F%E6%94%AF%E6%8C%81%E7%8E%B0%E4%BB%A3LLM%E6%A0%B8%E5%87%BD%E6%95%B0.pdf),
+[XSAI repo here](https://github.com/OpenXiangShan/XSAI)).
+We hope to provide hardware support for modern LLM kernels in a CPU paradigm on Xianshan, and hide memory latency automatically with
+out-of-order execution and prefetching.
+See XSAI's roadmap [here](https://github.com/OpenXiangShan/XSAI/issues/4).
 
 For CPU performance, I am experienced in
 - Prefetchers
@@ -86,13 +88,13 @@ For CPU performance, I am experienced in
 - Performance counter architecture
 - Performance evaluation framework
 
-During 2022-2024, I led the performance analysis and modeling team of Xiangshan processor in Beijing Institute of Open Source Chip (BOSC).
+During 2022 - 2024, I led the performance analysis and modeling team of Xiangshan processor in Beijing Institute of Open Source Chip (BOSC).
 Our team played a significant role in the design of 3rd generation architecture of the Xiangshan processor,
 achieving a SPECint2k6 score of 15/GHz on both C++ simulator and RTL.
 I will continue maintaining the micro-architecture simulator for Xiangshan and contribute to the open-source community
 when leading the LLM inference project in BOSC.
 
-My hobbies include playing badmiton, investment, and reading papers on health and biology.
+My hobbies include playing badmiton, investment.
 I obtained my Ph.D. degree from the Institute of Computing Technology, Chinese Academy of Sciences, and B.Sc. degree from Nanjing University.
 
 <!-- {{< icon name="download" pack="fas" >}} Download my {{< staticref "uploads/CV-En-latex.pdf" "newtab" >}}resumé{{< /staticref >}} or {{< staticref "uploads/CV-Chn.pdf" "newtab" >}}简历{{< /staticref >}}. -->
