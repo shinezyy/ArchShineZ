@@ -127,7 +127,7 @@ H100, compute density: 295.224
 
 对于 Attention 操作而言，其计算密度主要取决于两个核心参数：
 
-1.  **`q_seq_len`**: Query 序列的长度。在自回归解码中，这通常代表一次前向传播中模型需要处理的 Query token 数量。传统的逐 token 解码 `q_seq_len=1`，而推测解码（Speculative Decoding）等技术会使其大于 1。
+1.  **`q_seq_len`**: Query 序列的长度。在自回归解码中，这通常代表一次前向传播中模型需要处理的 Query token 数量。传统的逐 token 解码 `q_seq_len=1`，而推测解码 (Speculative Decoding)[https://arxiv.org/pdf/2211.17192]等技术会使其大于 1。
 2.  **`group_size`**: 在 [Grouped-Query Attention (GQA)](https://arxiv.org/pdf/2305.13245) 中，这代表共享同一份 Key 和 Value 的 Query Head 的数量。
 
 一个例子是 Deepseek V2/V3 中使用的 [**Multi-Head Latent Attention(MLA)**](https://arxiv.org/abs/2405.04434)。在解码阶段，如果采用[矩阵吸收](https://zhuanlan.zhihu.com/p/700214123)等先进技术，MLA 的核心计算在形式上等于只有个一个组的 GQA，即[Multi-Query Attention (MQA)](https://arxiv.org/abs/1911.02150)。在这种模式下，所有 Query Head 共享同一份压缩后的 KV Cache，其 `group_size` 实际上就等于总的 `head_num`。
