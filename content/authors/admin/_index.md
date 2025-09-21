@@ -91,8 +91,6 @@ For CPU performance, I am experienced in
 During 2022 - 2024, I led the performance analysis and modeling team of Xiangshan processor in Beijing Institute of Open Source Chip (BOSC).
 Our team played a significant role in the design of 3rd generation architecture of the Xiangshan processor,
 achieving a SPECint2k6 score of 15/GHz on both C++ simulator and RTL.
-I will continue maintaining the micro-architecture simulator for Xiangshan and contribute to the open-source community
-when leading the LLM inference project in BOSC.
 
 My hobbies include playing badmiton, investment.
 I obtained my Ph.D. degree from the Institute of Computing Technology, Chinese Academy of Sciences, and B.Sc. degree from Nanjing University.
