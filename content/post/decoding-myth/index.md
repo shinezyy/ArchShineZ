@@ -1,5 +1,5 @@
 ---
-title: The myth of decoding large models
+title: The myth of decoding large language models
 subtitle: 
 
 # Summary for listings and search engines
